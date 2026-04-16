@@ -46,6 +46,26 @@ End with an AI disclosure after a `---` separator. Name the specific model (e.g.
 - Use `example.com`, `example.org`, and `example.net` as custom domains or request hosts in tests.
 - Avoid `to_not have_enqueued_sidekiq_job` or `not_to have_enqueued_sidekiq_job` because they're prone to false positives. Make assertions on `SidekiqWorkerName.jobs.size` instead.
 
+#### VCR cassettes
+
+When writing tests that require VCR cassettes (recorded HTTP interactions):
+
+1. If the tests need real API credentials, copy them from the `antiwork/gumroad-deployment` repo and use the `config/master.key` from 1Password to decrypt `config/credentials.yml.enc`
+2. Run the tests locally to record/update the cassettes
+3. Include the cassette files (under `spec/support/fixtures/vcr_cassettes/`) in the PR
+4. Do not push PRs with missing or stale cassettes; CI will fail if the cassette doesn't exist or doesn't match
+
+### Before pushing
+
+Always run linting and type checking before pushing commits:
+
+```bash
+bundle exec rubocop -a              # Ruby lint + auto-correct
+DISABLE_TYPE_CHECKED=1 npx eslint   # JS/TS lint
+```
+
+Fix any issues before committing. CI does not auto-fix your code.
+
 ### Code standards
 
 - Always use the latest version of Ruby, Rails, TypeScript, and React
