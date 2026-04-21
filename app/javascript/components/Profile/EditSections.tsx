@@ -289,6 +289,7 @@ export const SectionLayout = ({
           <EditorSubmenu heading="Name" text={section.header}>
             <Fieldset>
               <Input
+                aria-label="Name"
                 value={section.header}
                 onChange={(e) => updateSection({ header: e.target.value })}
               />
