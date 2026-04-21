@@ -491,7 +491,7 @@ const UtmFieldSelect = ({
   onChange,
 }: {
   id: string;
-  placeholder: string;
+  placeholder?: string;
   baseOptionValues: string[];
   value: string | null;
   onChange: (value: string | null) => void;

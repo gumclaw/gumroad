@@ -162,7 +162,6 @@ const StateInput = () => {
           id={`${uid}state`}
           type="text"
           aria-invalid={errors.has("state")}
-          placeholder={stateLabel}
           disabled={isProcessing(state)}
           value={state.state}
           onChange={(e) => dispatch({ type: "set-value", state: e.target.value })}
@@ -187,7 +186,6 @@ const ZipCodeInput = () => {
         id={`${uid}zipCode`}
         type="text"
         aria-invalid={errors.has("zipCode")}
-        placeholder={label}
         value={state.zipCode}
         onChange={(e) => dispatch({ type: "set-value", zipCode: e.target.value })}
         disabled={isProcessing(state)}
