@@ -277,7 +277,6 @@ const ProductRow = ({ product, disabled, onChange }: ProductRowProps) => {
                 <Input
                   type="text"
                   autoComplete="off"
-                  placeholder="Commission"
                   disabled={disabled || !product.enabled}
                   {...inputProps}
                 />
