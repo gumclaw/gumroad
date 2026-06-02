@@ -112,18 +112,6 @@ export default function SettingsPage() {
       </Head>
       <WithPreviewSidebar>
         <form>
-          {customHtmlPagesEnabled ? (
-            <div role="tablist" aria-label="Profile editor mode" className="flex gap-2 border-b border-border p-4 md:px-8">
-              <Button role="tab" aria-selected={mode === "default"} onClick={() => setMode("default")}>
-                Default
-              </Button>
-              <Button role="tab" aria-selected={mode === "landing"} onClick={() => setMode("landing")}>
-                Landing page{hasLandingPage ? " (live)" : ""}
-              </Button>
-            </div>
-          ) : null}
-          {mode === "default" ? (
-            <>
           <section className="grid gap-8 p-4! md:p-8!">
             <header>
               <h2>Profile</h2>
@@ -267,8 +255,7 @@ export default function SettingsPage() {
               </Fieldset>
             </div>
           </section>
-            </>
-          ) : (
+          {customHtmlPagesEnabled ? (
             <LandingPageEditor
               username={profileSettings.username}
               profileUrl={`${scheme}://${subdomain}`}
@@ -278,7 +265,7 @@ export default function SettingsPage() {
                 setMode("default");
               }}
             />
-          )}
+          ) : null}
         </form>
         <PreviewSidebar
           previewLink={(props) => (
@@ -289,7 +276,31 @@ export default function SettingsPage() {
             </Button>
           )}
         >
-          {mode === "landing" && hasLandingPage ? (
+          {customHtmlPagesEnabled && hasLandingPage ? (
+            <div
+              role="tablist"
+              aria-label="Preview mode"
+              className="flex gap-1 rounded-full border border-border p-1 text-sm"
+            >
+              <Button
+                role="tab"
+                aria-selected={mode === "default"}
+                onClick={() => setMode("default")}
+                className="flex-1 rounded-full! border-0!"
+              >
+                Default
+              </Button>
+              <Button
+                role="tab"
+                aria-selected={mode === "landing"}
+                onClick={() => setMode("landing")}
+                className="flex-1 rounded-full! border-0!"
+              >
+                Landing page
+              </Button>
+            </div>
+          ) : null}
+          {customHtmlPagesEnabled && hasLandingPage && mode === "landing" ? (
             <LandingPagePreview username={profileSettings.username} />
           ) : (
           <Preview
