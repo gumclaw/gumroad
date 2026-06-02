@@ -2,20 +2,21 @@
 
 class UsersController < ApplicationController
   include ProductsHelper, SearchProducts, CustomDomainConfig, SocialShareUrlHelper, ActionView::Helpers::SanitizeHelper,
-          AffiliateCookie
+          AffiliateCookie, ProfileCustomHtml
 
   include PageMeta::Favicon, PageMeta::User
 
-  before_action :authenticate_user!, except: %i[show coffee subscribe subscribe_preview email_unsubscribe add_purchase_to_library session_info current_user_data]
+  before_action :authenticate_user!, except: %i[show coffee subscribe subscribe_preview email_unsubscribe add_purchase_to_library session_info current_user_data landing_iframe_content]
 
   after_action :verify_authorized, only: %i[deactivate]
 
   before_action :set_as_modal, only: %i[show]
-  before_action :set_user_and_custom_domain_config, only: %i[show coffee subscribe subscribe_preview]
+  before_action :set_user_and_custom_domain_config, only: %i[show coffee subscribe subscribe_preview landing_iframe_content]
   before_action :set_page_attributes, only: %i[show]
   before_action :set_user_for_action, only: %i[email_unsubscribe]
   before_action :check_if_needs_redirect, only: %i[show]
   before_action :set_affiliate_cookie, only: %i[show]
+  before_action :render_custom_html_if_present, only: %i[show]
 
   layout "inertia", only: %i[show subscribe coffee subscribe_preview]
 

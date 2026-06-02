@@ -21,9 +21,14 @@ class Settings::ProfilePolicy < ApplicationPolicy
     update_username?
   end
 
+  def custom_html_pages?
+    Feature.active?(:custom_html_pages, seller)
+  end
+
   def permitted_attributes
     user_attributes = [:name, :bio]
     user_attributes << :username if update_username?
+    user_attributes << :custom_html if custom_html_pages?
     [
       :profile_picture_blob_id,
       {

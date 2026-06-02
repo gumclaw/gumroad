@@ -95,7 +95,8 @@ module RenderingExtension
         settings_profile: {
           manage_social_connections: Pundit.policy!(pundit_user, [:settings, :profile]).manage_social_connections?,
           update: Pundit.policy!(pundit_user, [:settings, :profile]).update?,
-          update_username: Pundit.policy!(pundit_user, [:settings, :profile]).update_username?
+          update_username: Pundit.policy!(pundit_user, [:settings, :profile]).update_username?,
+          custom_html_pages: Pundit.policy!(pundit_user, [:settings, :profile]).custom_html_pages?
         },
         settings_third_party_analytics_user: {
           update: Pundit.policy!(pundit_user, [:settings, :third_party_analytics, pundit_user.seller]).update?

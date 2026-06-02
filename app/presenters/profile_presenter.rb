@@ -37,6 +37,7 @@ class ProfilePresenter
           background_color: seller.seller_profile.background_color,
           highlight_color: seller.seller_profile.highlight_color,
           profile_picture_blob_id: seller.avatar.signed_id,
+          custom_html: seller.custom_html,
         },
         memberships: memberships.map { |product| ProductPresenter.card_for_web(product:, show_seller: false) },
       }

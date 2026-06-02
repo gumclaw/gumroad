@@ -1121,6 +1121,7 @@ Rails.application.routes.draw do
     post "/secure_url_redirect", to: "secure_redirect#create"
 
     # TODO (chris): review and replace usage of routes below with UserCustomDomainConstraint routes
+    get "/:username/landing/embed", to: "users#landing_iframe_content", as: "user_landing"
     get "/:username", to: "users#show", as: "user"
     get "/:username/follow", to: "followers#new", as: "follow_user_page"
     get "/:username/p/:slug", to: "posts#show", as: :view_post
@@ -1208,6 +1209,7 @@ Rails.application.routes.draw do
     get "/l/:id/landing/embed", to: "links#landing_iframe_content"
     get "/l/:id/:code", to: "links#show", defaults: { format: "html" }
     get "/subscribe", to: "users#subscribe", as: :custom_domain_subscribe
+    get "/landing/embed", to: "users#landing_iframe_content", as: :custom_domain_user_landing
     get "/follow", to: redirect("/subscribe")
     get "/coffee", to: "users#coffee", as: :custom_domain_coffee
 

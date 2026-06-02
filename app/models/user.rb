@@ -107,6 +107,20 @@ class User < ApplicationRecord
   has_many :available_cross_sells, -> { cross_sell.alive.available_to_customers }, foreign_key: :seller_id, class_name: "Upsell"
   has_many :blocked_customer_objects, foreign_key: :seller_id
   has_one :seller_profile, foreign_key: :seller_id
+  has_one :page, as: :pageable, dependent: :destroy, autosave: true
+  delegate :custom_html, to: :page, allow_nil: true
+
+  # Mirrors Link#custom_html= so the profile reuses the polymorphic Page model
+  # (sanitization, 500KB cap, render pipeline) with no migration. A profile has
+  # no buy button, so the custom HTML is a pure marketing surface.
+  def custom_html=(value)
+    if value.blank?
+      page.custom_html = nil if page.present?
+      return
+    end
+
+    (page || build_page).custom_html = value
+  end
   has_many :seller_profile_sections, foreign_key: :seller_id
   has_many :seller_profile_products_sections, foreign_key: :seller_id
   has_many :seller_profile_posts_sections, foreign_key: :seller_id

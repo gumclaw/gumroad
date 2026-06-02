@@ -49,6 +49,7 @@ type Policies = {
     manage_social_connections: boolean;
     update: boolean;
     update_username: boolean;
+    custom_html_pages: boolean;
   };
   settings_third_party_analytics_user: {
     update: boolean;
