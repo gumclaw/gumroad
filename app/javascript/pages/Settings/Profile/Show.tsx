@@ -17,6 +17,8 @@ import { useLoggedInUser } from "$app/components/LoggedInUser";
 import { Preview } from "$app/components/Preview";
 import { PreviewSidebar, WithPreviewSidebar } from "$app/components/PreviewSidebar";
 import { Profile, Props as ProfileProps } from "$app/components/Profile";
+import { LandingPagePreview } from "$app/components/Profile/LandingPagePreview";
+import { LandingPageEditor } from "$app/components/Profile/Settings/LandingPageEditor";
 import { LogoInput } from "$app/components/Profile/Settings/LogoInput";
 import { showAlert } from "$app/components/server-components/Alert";
 import { Layout as SettingsLayout } from "$app/components/Settings/Layout";
@@ -61,6 +63,12 @@ export default function SettingsPage() {
 
   const uid = React.useId();
 
+  const customHtmlPagesEnabled = Boolean(loggedInUser?.policies.settings_profile.custom_html_pages);
+  const hasLandingPage = Boolean(profileSettings.custom_html?.trim());
+  // "default" shows the existing name/bio/color/font form + live <Profile> preview.
+  // "landing" shows the custom-HTML control surface + sandboxed landing iframe.
+  const [mode, setMode] = React.useState<"default" | "landing">(hasLandingPage ? "landing" : "default");
+
   const canUpdate = Boolean(loggedInUser?.policies.settings_profile.update) && !form.processing;
 
   const handleSave = () => {
@@ -104,6 +112,18 @@ export default function SettingsPage() {
       </Head>
       <WithPreviewSidebar>
         <form>
+          {customHtmlPagesEnabled ? (
+            <div role="tablist" aria-label="Profile editor mode" className="flex gap-2 border-b border-border p-4 md:px-8">
+              <Button role="tab" aria-selected={mode === "default"} onClick={() => setMode("default")}>
+                Default
+              </Button>
+              <Button role="tab" aria-selected={mode === "landing"} onClick={() => setMode("landing")}>
+                Landing page{hasLandingPage ? " (live)" : ""}
+              </Button>
+            </div>
+          ) : null}
+          {mode === "default" ? (
+            <>
           <section className="grid gap-8 p-4! md:p-8!">
             <header>
               <h2>Profile</h2>
@@ -247,6 +267,18 @@ export default function SettingsPage() {
               </Fieldset>
             </div>
           </section>
+            </>
+          ) : (
+            <LandingPageEditor
+              username={profileSettings.username}
+              profileUrl={`${scheme}://${subdomain}`}
+              hasLandingPage={hasLandingPage}
+              onRemoved={() => {
+                updateProfileSettings({ custom_html: null });
+                setMode("default");
+              }}
+            />
+          )}
         </form>
         <PreviewSidebar
           previewLink={(props) => (
@@ -257,6 +289,9 @@ export default function SettingsPage() {
             </Button>
           )}
         >
+          {mode === "landing" && hasLandingPage ? (
+            <LandingPagePreview username={profileSettings.username} />
+          ) : (
           <Preview
             scaleFactor={0.35}
             style={{
@@ -290,6 +325,7 @@ export default function SettingsPage() {
               bio={profileSettings.bio}
             />
           </Preview>
+          )}
         </PreviewSidebar>
       </WithPreviewSidebar>
     </SettingsLayout>
