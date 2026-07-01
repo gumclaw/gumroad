@@ -138,13 +138,37 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Query the PR's CURRENT native-auto-merge arm state (enabledAt is null
-          # when not armed). Used to decide whether the ineligible path has real
-          # work to do, and to VERIFY a disarm actually took effect.
+          # Query the PR's CURRENT native-auto-merge arm state. Prints exactly one
+          # of three tokens on stdout:
+          #   <timestamp>  -> ARMED (enabledAt is a real ISO timestamp)
+          #   null         -> NOT armed (autoMergeRequest is null; jq prints "null")
+          #   unknown      -> QUERY FAILED (network hiccup, rate limit, auth) — the
+          #                   state is INDETERMINATE, NOT "armed" and NOT "disarmed".
+          # Callers MUST treat "unknown" as indeterminate: a transient GraphQL error
+          # must never be read as "armed", or an API outage would fail-close every
+          # ineligible PR that was in fact never armed.
           armed_state() {
             gh api graphql -f query='
               query($pr:ID!){ node(id:$pr){ ... on PullRequest{ autoMergeRequest{ enabledAt } } } }
             ' -f pr="$PR_NODE_ID" --jq '.data.node.autoMergeRequest.enabledAt' 2>/dev/null || echo "unknown"
+          }
+
+          # Resolve armed_state to a DEFINITIVE verdict, retrying through transient
+          # "unknown" (query error) results so an API blip is never mistaken for a
+          # real state. Echoes exactly one of: "armed", "unarmed", "unknown".
+          # "unknown" is returned only when every attempt failed — a sustained
+          # GraphQL outage — never when we merely saw a not-armed PR.
+          resolve_armed_state() {
+            local s
+            for _ in 1 2 3; do
+              s="$(armed_state)"
+              case "$s" in
+                unknown) sleep 3; continue ;;
+                ""|null) echo "unarmed"; return ;;
+                *)       echo "armed"; return ;;
+              esac
+            done
+            echo "unknown"
           }
 
           if [ "$RESULT" = "0" ]; then
@@ -179,15 +203,35 @@ jobs:
             # GREEN to RED). Only act if it is actually armed, then VERIFY. If we
             # cannot prove it is disarmed, FAIL CLOSED: post a red required check
             # and fail the job so the ineligible head cannot merge on green checks.
+            #
+            # Resolve the arm state first. A transient GraphQL error yields "unknown"
+            # (indeterminate) — retry a few times to get a definitive armed/not-armed
+            # answer before deciding. We must NOT treat "unknown" as "armed", or a
+            # GraphQL outage would fail-close every ineligible PR that was never armed.
             state="$(armed_state)"
-            if [ -n "$state" ] && [ "$state" != "null" ]; then
+            for probe in 1 2 3; do
+              [ "$state" != "unknown" ] && break
+              sleep 3
+              state="$(armed_state)"
+            done
+
+            if [ "$state" = "unknown" ]; then
+              # Still indeterminate after retries: we have NO evidence the PR is
+              # armed. Do not fail closed on a PR that may never have been armed —
+              # a stale arm (if any) is bound to a specific head OID and cannot fire
+              # on an ineligible head anyway. Log and continue to a green advisory.
+              echo "arm state indeterminate after retries (GraphQL unavailable); skipping disarm — no evidence of arming" >&2
+            elif [ -n "$state" ] && [ "$state" != "null" ]; then
+              # Confirmed ARMED (real enabledAt timestamp) — disarm and verify.
               disarmed="no"
               for attempt in 1 2 3; do
                 gh api graphql -f query='
                   mutation($pr:ID!){ disablePullRequestAutoMerge(input:{pullRequestId:$pr}){ pullRequest{ number } } }
                 ' -f pr="$PR_NODE_ID" >/dev/null 2>&1 || true
                 after="$(armed_state)"
-                if [ -z "$after" ] || [ "$after" = "null" ]; then disarmed="yes"; break; fi
+                # Only "null" (definitively not armed) proves disarm. "unknown"
+                # (query error) is NOT proof — keep retrying, then fail closed.
+                if [ "$after" = "null" ]; then disarmed="yes"; break; fi
                 sleep 3
               done
               if [ "$disarmed" != "yes" ]; then
