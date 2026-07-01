@@ -18,10 +18,11 @@ Generate a concise, high-quality PR description from the current branch and its 
 **CONTRIBUTING.md line 17 is a hard `Must`: _"Include a video for every PR."_ This is the single most important requirement for any PR that touches product — do NOT treat it as optional, and do NOT rationalize a change as "too small to film."**
 
 - **Any product/UI change** (a view, component, CSS, layout, mobile behavior, copy a user sees, a button, spacing, colors — anything a user could perceive): a **before/after VIDEO or screenshots are REQUIRED**, showing **desktop + mobile, light + dark** where applicable. A mobile-layout or CSS tweak is exactly the kind of change that MUST have visual proof — that is the whole point of the rule. "Minor layout fix" is NOT an exemption; it is the primary target.
-- **Non-user-facing change** (pure backend/refactor/config): a **short walkthrough video** of the relevant existing functionality is still required to demonstrate nothing broke.
-- If you do not yet have the media, the PR is NOT ready. Capture it first (boot the app, take the screenshots/video, store under `qa-media/pr-<number>-<desc>.<ext>`, reference via raw GitHub URL) — do NOT emit a description with an empty or deleted Before/After section for a product change.
+- **Non-user-facing code/behavior change** (backend logic, refactor, migration, job, config that alters runtime behavior): a **short walkthrough video** of the relevant existing functionality is still required to demonstrate nothing broke.
+- **Pure non-code change** (documentation, a SKILL.md, comments, `.gitignore`/lint config — anything that changes no code a user runs and nothing a user can see): no media is required. The diff is self-evident; do not manufacture a video for it.
+- **PREREQUISITE, NOT AN INLINE STEP:** this skill only generates text — it cannot boot the app or capture media. If a product/UI or non-visual code change needs media and you do not already have it, **HALT here.** Tell the human exactly what to capture (boot the app, record the before/after or walkthrough, store under `qa-media/pr-<number>-<desc>.<ext>`, reference via raw GitHub URL) and do NOT emit a description with an empty or deleted Before/After section. Failing loudly is correct; silently shipping a description without the required media is the exact failure this rule prevents.
 
-**The Before/After section below is NOT deletable for product changes.** The only case where it may be omitted is a genuinely non-visual change, and even then a walkthrough video goes in its place. When in doubt: include media.
+**The Before/After section below is NOT deletable for product changes.** It may be omitted only for a non-visual code/behavior change (replaced by a walkthrough video) or a pure non-code change (no media at all). When in doubt: include media.
 
 ## Workflow
 
@@ -93,7 +94,8 @@ Business or user rationale. Strategic context if relevant.]
 
 <!-- BEFORE/AFTER — REQUIRED for every product/UI change (see RULE #0). Do NOT delete this
      section for anything a user can perceive. Video required; screenshots acceptable for
-     static layout. For non-visual changes, replace with a short walkthrough video instead.
+     static layout. For non-visual code/behavior changes, replace with a short walkthrough video.
+     For pure non-code changes (docs, skills, config with no runtime effect), delete this section — no media needed.
 ## Before/After
 
 Before:
@@ -139,6 +141,6 @@ Tell the user the file was created and suggest they review it before posting.
 
 - Use `gh` read-only only. Never create, comment on, or update PRs.
 - Always fetch the GitHub issue — it provides critical context for the Problem section.
-- **NEVER omit the Before/After section for a product/UI change** (see RULE #0 — media is a hard `Must`). It may only be dropped for a genuinely non-visual change, and even then a short walkthrough video replaces it. If you catch yourself deleting Before/After on a UI/CSS/layout/mobile PR, stop — that is the exact rule violation this skill exists to prevent.
+- **NEVER omit the Before/After section for a product/UI change** (see RULE #0 — media is a hard `Must`). It may only be dropped for a non-visual code/behavior change (replaced by a short walkthrough video) or a pure non-code change (docs/skills/config with no runtime effect, which needs no media). If you catch yourself deleting Before/After on a UI/CSS/layout/mobile PR, stop — that is the exact rule violation this skill exists to prevent.
 - Omit the Test Results section only if there are genuinely no tests to run (remove the HTML comment too); otherwise include the passing-tests screenshot.
 - The AI disclosure format follows CONTRIBUTING.md.
