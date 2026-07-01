@@ -28,8 +28,8 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
-  contents: write        # to enable GitHub native auto-merge on eligible PRs
-  pull-requests: write   # to add/remove the `auto-merge-eligible` label
+  contents: write # to enable GitHub native auto-merge on eligible PRs
+  pull-requests: write # to add/remove the `auto-merge-eligible` label
   statuses: write
 
 jobs:
@@ -120,13 +120,16 @@ jobs:
           echo "$out"
           exit 0
 
-      # Always GREEN. A red check here used to be ambiguous — humans couldn't
-      # tell "not auto-merge-eligible (normal — routes to a human)" from a real
-      # failing spec. So eligibility is now carried by the `auto-merge-eligible`
-      # LABEL (the machine signal for native auto-merge to key on), the commit
-      # status is always success with a descriptive note, and the reasons go to
-      # the job summary. This job never fails and never merges anything.
-      - name: Publish eligibility (label + status + summary; never red)
+      # Eligibility is carried by the `auto-merge-eligible` LABEL (the machine
+      # signal native auto-merge keys on). The advisory commit status is GREEN on
+      # every safe path — eligible, ineligible-and-not-armed, ineligible-and-
+      # successfully-disarmed, or ineligible-with-indeterminate-arm-state — so
+      # humans don't confuse "routes to a human" with a real failing spec. The ONE
+      # exception is FAIL-CLOSED: if an INELIGIBLE PR is confirmed still armed for
+      # native auto-merge and cannot be disarmed after retries, the job posts a red
+      # `auto-merge-gate` status and exits 1 so the unevaluated head cannot ride to
+      # merge on green checks. This job never merges anything.
+      - name: Publish eligibility + arm/disarm native auto-merge (fail-closed if an ineligible PR stays armed)
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
