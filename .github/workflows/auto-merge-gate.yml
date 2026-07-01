@@ -153,24 +153,6 @@ jobs:
             ' -f pr="$PR_NODE_ID" --jq '.data.node.autoMergeRequest.enabledAt' 2>/dev/null || echo "unknown"
           }
 
-          # Resolve armed_state to a DEFINITIVE verdict, retrying through transient
-          # "unknown" (query error) results so an API blip is never mistaken for a
-          # real state. Echoes exactly one of: "armed", "unarmed", "unknown".
-          # "unknown" is returned only when every attempt failed — a sustained
-          # GraphQL outage — never when we merely saw a not-armed PR.
-          resolve_armed_state() {
-            local s
-            for _ in 1 2 3; do
-              s="$(armed_state)"
-              case "$s" in
-                unknown) sleep 3; continue ;;
-                ""|null) echo "unarmed"; return ;;
-                *)       echo "armed"; return ;;
-              esac
-            done
-            echo "unknown"
-          }
-
           if [ "$RESULT" = "0" ]; then
             desc="Eligible for safe-lane auto-merge"
             verdict="✅ **Eligible for safe-lane auto-merge** — small, bot-signed, ticket-scoped, allowlisted paths only."
