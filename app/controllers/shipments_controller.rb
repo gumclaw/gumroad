@@ -45,7 +45,7 @@ class ShipmentsController < ApplicationController
     # "is your address correct?" message (see gumroad-private#916, where a deactivated
     # key blocked physical checkout platform-wide with zero error-tracker visibility).
     # Buyers still get the same generic message either way.
-    ErrorNotifier.notify(e) if easypost_config_error?(e)
+    report_easypost_config_error(e) if easypost_config_error?(e)
     render_error("We are unable to verify your shipping address. Is your address correct?")
   end
 
@@ -82,6 +82,15 @@ class ShipmentsController < ApplicationController
       error.is_a?(EasyPost::Errors::UnauthorizedError) ||
         error.is_a?(EasyPost::Errors::ForbiddenError) ||
         error.is_a?(EasyPost::Errors::PaymentError)
+    end
+
+    # The Sentry report is best-effort: if reporting itself fails for any reason, we log
+    # and move on so the buyer still receives the normal generic validation message
+    # instead of a server error from the monitoring path.
+    def report_easypost_config_error(error)
+      ErrorNotifier.notify(error)
+    rescue => notify_error
+      Rails.logger.error("Failed to report EasyPost config error to Sentry: #{notify_error.full_message}")
     end
 
     def render_address_response(address)

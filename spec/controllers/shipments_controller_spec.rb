@@ -136,6 +136,16 @@ describe ShipmentsController, :vcr  do
         expect(response.parsed_body["success"]).to be(false)
         expect(response.parsed_body["error_message"]).to eq "We are unable to verify your shipping address. Is your address correct?"
       end
+
+      it "still renders the generic error when Sentry reporting itself fails" do
+        stub_easypost_error(EasyPost::Errors::ForbiddenError.new("This api key is no longer active.", 403))
+        allow(ErrorNotifier).to receive(:notify).and_raise(StandardError.new("Sentry is down"))
+
+        post :verify_shipping_address, params: @params
+
+        expect(response.parsed_body["success"]).to be(false)
+        expect(response.parsed_body["error_message"]).to eq "We are unable to verify your shipping address. Is your address correct?"
+      end
     end
 
     describe "international address" do
