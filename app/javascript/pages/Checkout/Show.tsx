@@ -34,7 +34,11 @@ import {
   type ProductToAdd,
   type Result,
 } from "$app/components/Checkout/cartState";
-import { buildCartSaveRefreshCallbacks, type CartSaveCallbacks } from "$app/components/Checkout/checkoutPaymentRefresh";
+import {
+  buildCartSaveRefreshCallbacks,
+  paymentLaneCartKey,
+  type CartSaveCallbacks,
+} from "$app/components/Checkout/checkoutPaymentRefresh";
 import { CrossSellModal } from "$app/components/Checkout/CrossSellModal";
 import { computeInitialCheckout, type InitialCheckout } from "$app/components/Checkout/initialCheckout";
 import {
@@ -256,6 +260,11 @@ const CheckoutIndexPage = () => {
   }, [state.status.type, isMobile, cartProductIdsKey]);
 
   const completedOfferIds = React.useRef(new Set()).current;
+  // The payment-lane key of the cart the page has most recently marked the payment configuration
+  // stale for. acceptOffer invalidates eagerly (it has to, to beat its own "validate"), and this
+  // lets the passive effect below tell "the cart moved to a new lane" from "the eager invalidation
+  // already covered this exact edit".
+  const invalidatedPaymentLaneKeyRef = React.useRef<string | null>(null);
   const [offers, setOffers] = React.useState<
     null | ((CrossSell & { type: "cross-sell" }) | (OfferedUpsell & { type: "upsell" }))[]
   >(null);
@@ -293,6 +302,12 @@ const CheckoutIndexPage = () => {
     // configuration computed for the pre-offer cart. An accepted offer changes the cart's items,
     // so it can change the lane (a bundle's listed currency, a recurring tier) exactly like any
     // other edit.
+    //
+    // Record the key this invalidation covers so the passive effect does not invalidate a SECOND
+    // time for the very same edit. That second invalidation would clear the resume this submit
+    // just armed, and the purchase the buyer already confirmed in the offer modal would never be
+    // placed — the checkout would sit there with no feedback.
+    invalidatedPaymentLaneKeyRef.current = paymentLaneCartKey(newCart);
     dispatch({ type: "invalidate-checkout-payment" });
     if (surchargesIfAccepted)
       dispatch({
@@ -729,30 +744,17 @@ const CheckoutIndexPage = () => {
   // on screen was computed for the previous cart. Mark it stale (Pay stays disabled) until the
   // save above returns the recomputed one.
   //
-  // Keyed on the items' lane-relevant fields rather than the cart object, because the cart object
-  // also carries things the payment lane does not depend on — the buyer's email is written into it
-  // on every keystroke (see the effect below), and invalidating on that would disable Pay while
-  // someone types their address. These are the fields Checkout::StripePaymentPresenter reads to
-  // choose the lane: which seller each item belongs to, the price, whether it recurs or pays in
-  // installments, preorder/free-trial status, the native type, and the listed currency.
-  const paymentLaneCartKey = cartForm.data.cart.items
-    .map((item) =>
-      [
-        item.product.creator.id,
-        item.product.permalink,
-        item.option_id ?? "",
-        item.quantity,
-        item.price,
-        item.recurrence ?? "",
-        item.pay_in_installments,
-        item.product.is_preorder,
-        item.product.free_trial !== null,
-        item.product.native_type,
-        item.product.currency_code,
-      ].join(":"),
-    )
-    .join("|");
-  useOnChange(() => dispatch({ type: "invalidate-checkout-payment" }), [paymentLaneCartKey]);
+  // Keyed on the items' lane-relevant fields rather than the cart object — see paymentLaneCartKey
+  // for which fields those are and why the whole cart object is the wrong key.
+  const currentPaymentLaneKey = paymentLaneCartKey(cartForm.data.cart);
+  useOnChange(() => {
+    // acceptOffer already invalidated for this exact cart, eagerly, so that its own "validate"
+    // would be refused and armed for resume. Invalidating again here would clear that resume and
+    // strand the purchase the buyer confirmed in the offer modal, so treat the edit as covered.
+    if (invalidatedPaymentLaneKeyRef.current === currentPaymentLaneKey) return;
+    invalidatedPaymentLaneKeyRef.current = currentPaymentLaneKey;
+    dispatch({ type: "invalidate-checkout-payment" });
+  }, [currentPaymentLaneKey]);
   // The recomputed configuration, from the save's partial reload. Inertia builds a fresh props
   // object for every response, so this also clears the stale flag when the lane did not change.
   useOnChange(

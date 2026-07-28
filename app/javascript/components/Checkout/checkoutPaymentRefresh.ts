@@ -52,6 +52,54 @@ export type CartSaveCallbacks = {
 export const deliveredCheckoutPayment = (page: ResponseProps) => CHECKOUT_PAYMENT_PROP in page.props;
 
 /**
+ * A fingerprint of everything about the cart that can change which payment configuration the server
+ * computes for it.
+ *
+ * Only the fields Checkout::StripePaymentPresenter reads to choose the lane are included: which
+ * seller each item belongs to, the price, whether it recurs or pays in installments,
+ * preorder/free-trial status, the native type, and the listed currency. The cart also carries
+ * things the lane does not depend on — the buyer's email is written into it on every keystroke —
+ * and keying on the whole cart would disable Pay while someone types their address.
+ *
+ * Two carts with the same key are guaranteed to get the same configuration, which is what lets the
+ * page recognise a repeat invalidation for an edit it has already invalidated for.
+ */
+export const paymentLaneCartKey = (cart: {
+  items: {
+    product: {
+      creator: { id: string };
+      permalink: string;
+      is_preorder: boolean;
+      free_trial: unknown;
+      native_type: string;
+      currency_code: string;
+    };
+    option_id: string | null;
+    quantity: number;
+    price: number;
+    recurrence: string | null;
+    pay_in_installments: boolean;
+  }[];
+}) =>
+  cart.items
+    .map((item) =>
+      [
+        item.product.creator.id,
+        item.product.permalink,
+        item.option_id ?? "",
+        item.quantity,
+        item.price,
+        item.recurrence ?? "",
+        item.pay_in_installments,
+        item.product.is_preorder,
+        item.product.free_trial !== null,
+        item.product.native_type,
+        item.product.currency_code,
+      ].join(":"),
+    )
+    .join("|");
+
+/**
  * Builds the callbacks for a cart save so that a save which does not deliver a payment
  * configuration recovers by saving again.
  *

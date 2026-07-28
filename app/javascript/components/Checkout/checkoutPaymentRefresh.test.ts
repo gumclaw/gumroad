@@ -4,6 +4,7 @@ import {
   buildCartSaveRefreshCallbacks,
   type CartSaveCallbacks,
   CHECKOUT_PAYMENT_REFRESH_FAILED_MESSAGE,
+  paymentLaneCartKey,
 } from "$app/components/Checkout/checkoutPaymentRefresh";
 
 const CONFIG = { type: "payment-element" };
@@ -139,5 +140,68 @@ describe("buildCartSaveRefreshCallbacks", () => {
     lost.onFinish({});
 
     expect(save).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("paymentLaneCartKey", () => {
+  type LaneCart = Parameters<typeof paymentLaneCartKey>[0];
+  type LaneItem = LaneCart["items"][number];
+
+  // `product` is merged rather than replaced, so a test can override one product field without
+  // restating the rest of it.
+  const item = ({
+    product,
+    ...overrides
+  }: Partial<Omit<LaneItem, "product">> & { product?: Partial<LaneItem["product"]> } = {}): LaneItem => ({
+    option_id: null,
+    quantity: 1,
+    price: 500,
+    recurrence: null,
+    pay_in_installments: false,
+    ...overrides,
+    product: {
+      creator: { id: "seller-1" },
+      permalink: "abc",
+      is_preorder: false,
+      free_trial: null,
+      native_type: "digital",
+      currency_code: "usd",
+      ...product,
+    },
+  });
+
+  it("ignores cart fields the payment configuration does not depend on", () => {
+    // The buyer's email is written into the cart on every keystroke. If it moved the key, Pay would
+    // be disabled while someone types their address.
+    const cart = { items: [item()], email: "a@example.com", discountCodes: [] };
+    const typing = { items: [item()], email: "ab@example.com", discountCodes: [] };
+
+    expect(paymentLaneCartKey(typing)).toBe(paymentLaneCartKey(cart));
+  });
+
+  it("changes when a lane-relevant field changes", () => {
+    const base = { items: [item()] };
+
+    // Each of these is read by Checkout::StripePaymentPresenter to pick the lane.
+    expect(paymentLaneCartKey({ items: [item({ product: { creator: { id: "seller-2" } } })] })).not.toBe(
+      paymentLaneCartKey(base),
+    );
+    expect(paymentLaneCartKey({ items: [item({ price: 900 })] })).not.toBe(paymentLaneCartKey(base));
+    expect(paymentLaneCartKey({ items: [item({ recurrence: "monthly" })] })).not.toBe(paymentLaneCartKey(base));
+    expect(paymentLaneCartKey({ items: [item({ pay_in_installments: true })] })).not.toBe(paymentLaneCartKey(base));
+    expect(paymentLaneCartKey({ items: [item({ product: { currency_code: "eur" } })] })).not.toBe(
+      paymentLaneCartKey(base),
+    );
+    expect(paymentLaneCartKey({ items: [item({ product: { free_trial: { duration: "week" } } })] })).not.toBe(
+      paymentLaneCartKey(base),
+    );
+  });
+
+  it("changes when an item is added or removed, as accepting an offer does", () => {
+    const single = { items: [item()] };
+    const added = { items: [item(), item({ product: { permalink: "xyz" } })] };
+
+    expect(paymentLaneCartKey(added)).not.toBe(paymentLaneCartKey(single));
+    expect(paymentLaneCartKey({ items: [] })).not.toBe(paymentLaneCartKey(single));
   });
 });
